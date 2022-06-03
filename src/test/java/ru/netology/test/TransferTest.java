@@ -10,14 +10,12 @@ import ru.netology.page.LoginPage;
 
 import static com.codeborne.selenide.Selenide.open;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static ru.netology.data.DataHelper.getFirstCardNumber;
+import static ru.netology.data.DataHelper.getSecondCardNumber;
+import static ru.netology.page.DashboardPage.pushFirstCard;
+import static ru.netology.page.DashboardPage.pushSecondCard;
 
 public class TransferTest {
-    int begBalance1;
-    int begBalance2;
-    int endBalance1;
-    int endBalance2;
-    int sum;
-    DashboardPage dashboardPage;
 
     @BeforeEach
     void SetUp() {
@@ -26,43 +24,46 @@ public class TransferTest {
         val authInfo = DataHelper.getAuthInfo();
         val verificationPage = loginPage.validLogin(authInfo);
         val verificationCode = DataHelper.getVerificationCodeFor(authInfo);
-        dashboardPage = verificationPage.validVerify(verificationCode);
-        begBalance1 = dashboardPage.getBalance(dashboardPage.card1);
-        begBalance2 = dashboardPage.getBalance(dashboardPage.card2);
+        verificationPage.validVerify(verificationCode);
     }
 
     @Test
-    @DisplayName("Перевод денег сo второй карты на первую")
     void shouldTransferMoneyFromSecondToFirstCard() {
-        sum = 100;
-        val topUpPage = dashboardPage.clickTopUp(dashboardPage.card1);
-        val cardNum = DataHelper.getSecondCardNumber().getCardNumber();
-        val dashboardPage2 = topUpPage.successfulTopUp(Integer.toString(sum), cardNum);
-        endBalance1 = dashboardPage2.getBalance(dashboardPage2.card1);
-        endBalance2 = dashboardPage2.getBalance(dashboardPage2.card2);
-        assertEquals(begBalance1 + sum, endBalance1);
-        assertEquals(begBalance2 - sum, endBalance2);
+        val dashboardPage = new DashboardPage();
+        int sum = 2_348;
+
+        val firstCardBalanceStart = dashboardPage.getFirstCardBalance();
+        val secondCardBalanceStart = dashboardPage.getSecondCardBalance();
+        val transactionPage = pushSecondCard();
+        transactionPage.successfulTopUp(sum, getSecondCardNumber());
+        val firstCardBalanceResult = firstCardBalanceStart + sum;
+        val secondCardBalanceResult = secondCardBalanceStart - sum;
+
+        assertEquals(firstCardBalanceResult, dashboardPage.getFirstCardBalance());
+        assertEquals(secondCardBalanceResult, dashboardPage.getSecondCardBalance());
     }
 
     @Test
-    @DisplayName("Перевод денег с первой карты на вторую")
     void shouldTransferMoneyFromFirstToSecondCard() {
-        sum = 100;
-        val topUpPage = dashboardPage.clickTopUp(dashboardPage.card2);
-        val cardNum = DataHelper.getFirstCardNumber().getCardNumber();
-        val dashboardPage2 = topUpPage.successfulTopUp(Integer.toString(sum), cardNum);
-        endBalance1 = dashboardPage2.getBalance(dashboardPage2.card1);
-        endBalance2 = dashboardPage2.getBalance(dashboardPage2.card2);
-        assertEquals(begBalance1 - sum, endBalance1);
-        assertEquals(begBalance2 + sum, endBalance2);
+        val dashboardPage = new DashboardPage();
+        int sum = 1_563;
+
+        val firstCardBalanceStart = dashboardPage.getFirstCardBalance();
+        val secondCardBalanceStart = dashboardPage.getSecondCardBalance();
+        val transactionPage = pushFirstCard();
+        transactionPage.successfulTopUp(sum, getFirstCardNumber());
+        val firstCardBalanceResult = firstCardBalanceStart - sum;
+        val secondCardBalanceResult = secondCardBalanceStart + sum;
+
+        assertEquals(firstCardBalanceResult, dashboardPage.getFirstCardBalance());
+        assertEquals(secondCardBalanceResult, dashboardPage.getSecondCardBalance());
     }
 
     @Test
-    @DisplayName("Не должен переводить больше, чем есть на карте")
     void shouldNotTransferMoreThanAvailable() {
-        sum = begBalance1 + 100;
-        val topUpPage = dashboardPage.clickTopUp(dashboardPage.card2);
-        val cardNum = DataHelper.getFirstCardNumber().getCardNumber();
-        topUpPage.unsuccessfulTopUp(Integer.toString(sum), cardNum);
+        int sum = 10_001;
+        val transactionPage = pushSecondCard();
+        transactionPage.successfulTopUp(sum, getFirstCardNumber());
+        transactionPage.getErrorLimit();
     }
 }
